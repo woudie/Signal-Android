@@ -153,7 +153,7 @@ public class DeviceActivity extends PassphraseRequiredActivity
     EditText pinEditText   = (EditText) DialogCompat.requireViewById(dialog, R.id.reminder_disable_pin);
     TextView statusText    = (TextView) DialogCompat.requireViewById(dialog, R.id.reminder_disable_status);
     View     cancelButton  = DialogCompat.requireViewById(dialog, R.id.reminder_disable_cancel);
-    View     turnOffButton = DialogCompat.requireViewById(dialog, R.id.reminder_disable_turn_off);
+    View     confirmButton = DialogCompat.requireViewById(dialog, R.id.reminder_disable_turn_off);
 
     pinEditText.post(() -> {
       if (pinEditText.requestFocus()) {
@@ -177,13 +177,13 @@ public class DeviceActivity extends PassphraseRequiredActivity
     pinEditText.addTextChangedListener(new SimpleTextWatcher() {
       @Override
       public void onTextChanged(String text) {
-        turnOffButton.setEnabled(text.length() >= KbsConstants.MINIMUM_PIN_LENGTH);
+        confirmButton.setEnabled(text.length() >= KbsConstants.MINIMUM_PIN_LENGTH);
       }
     });
 
     pinEditText.setTypeface(Typeface.DEFAULT);
 
-    turnOffButton.setOnClickListener(nV -> {
+    confirmButton.setOnClickListener(nV -> {
       String  pin     = pinEditText.getText().toString();
       boolean correct = PinHashing.verifyLocalPinHash(Objects.requireNonNull(SignalStore.kbsValues().getLocalPinHash()), pin);
 
