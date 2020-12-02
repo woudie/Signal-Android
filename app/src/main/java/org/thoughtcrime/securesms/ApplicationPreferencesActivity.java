@@ -33,6 +33,7 @@ import androidx.preference.Preference;
 
 import org.thoughtcrime.securesms.help.HelpFragment;
 import org.thoughtcrime.securesms.keyvalue.SignalStore;
+import org.thoughtcrime.securesms.lock.v2.CreateKbsPinActivity;
 import org.thoughtcrime.securesms.preferences.AdvancedPreferenceFragment;
 import org.thoughtcrime.securesms.preferences.AppProtectionPreferenceFragment;
 import org.thoughtcrime.securesms.preferences.AppearancePreferenceFragment;
@@ -53,6 +54,9 @@ import org.thoughtcrime.securesms.util.DynamicTheme;
 import org.thoughtcrime.securesms.util.FeatureFlags;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.ThemeUtil;
+import org.thoughtcrime.securesms.PassphraseRequiredActivity;
+import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.lock.v2.CreateKbsPinActivity;
 
 /**
  * The Activity for application preference display and management.
@@ -312,6 +316,8 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
           break;
         case PREFERENCE_CATEGORY_DEVICES:
           Intent intent = new Intent(getActivity(), DeviceActivity.class);
+          //final Intent createPin = CreateKbsPinActivity.getIntentForPinCreate(preference.getContext());
+          //final Intent chained   = PassphraseRequiredActivity.chainIntent(createPin, intent);
           startActivity(intent);
           break;
         case PREFERENCE_CATEGORY_ADVANCED:

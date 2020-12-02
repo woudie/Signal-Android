@@ -1272,6 +1272,12 @@
 
     <string name="DeviceActivity_signal_needs_the_camera_permission_in_order_to_scan_a_qr_code">Signal needs the Camera permission in order to scan a QR code, but it has been permanently denied. Please continue to app settings, select \"Permissions\", and enable \"Camera\".</string>
     <string name="DeviceActivity_unable_to_scan_a_qr_code_without_the_camera_permission">Unable to scan a QR code without the Camera permission</string>
+    <string name="DeviceActivity__confirm">Confirm</string>
+    <string name="DeviceActivity__confirm_pin">Confirm PIN</string>
+    <string name="DeviceActivity__confirm_your_signal_pin">Confirm your Signal PIN</string>
+    <string name="DeviceActivity__make_sure_you_memorize_or_securely_store_your_pin">Make sure you memorize or securely store your PIN as it can\'t be recovered. If you forget your PIN, you may lose data when re-registering your Signal account.</string>
+    <string name="DeviceActivity__incorrect_pin_try_again">Incorrect PIN. Try again.</string>
+
 
     <!-- ExpirationDialog -->
     <string name="ExpirationDialog_disappearing_messages">Disappearing messages</string>

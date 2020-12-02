@@ -63,7 +63,7 @@ public class EditProfileFragment extends LoggingFragment {
 
   private static final String TAG                        = Log.tag(EditProfileFragment.class);
   private static final short  REQUEST_CODE_SELECT_AVATAR = 31726;
-  private static final int    MAX_GROUP_NAME_LENGTH      = 32;
+  private static final int    MAX_GROUP_NAME_LENGTH      = 34;
 
   private Toolbar                toolbar;
   private View                   title;
