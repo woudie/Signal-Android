@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.signal.ringrtc.CallException;
+import org.signal.ringrtc.CallId;
 import org.signal.ringrtc.IceCandidate;
 import org.thoughtcrime.securesms.dependencies.ApplicationDependencies;
 import org.thoughtcrime.securesms.events.CallParticipant;
@@ -115,7 +116,7 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
 
     Log.i(tag, "handleRemoteVideoEnable(): call_id: " + activePeer.getCallId());
 
-    CallParticipant oldParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteParticipant(activePeer.getRecipient()));
+    CallParticipant oldParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteCallParticipant(activePeer.getRecipient()));
     CallParticipant newParticipant = oldParticipant.withVideoEnabled(enable);
 
     return currentState.builder()
@@ -148,8 +149,13 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
   }
 
   @Override
-  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @NonNull RemotePeer remotePeer) {
+  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @Nullable RemotePeer remotePeer) {
     Log.i(tag, "handleCallConcluded():");
+
+    if (remotePeer == null) {
+      return currentState;
+    }
+
     Log.i(tag, "delete remotePeer callId: " + remotePeer.getCallId() + " key: " + remotePeer.hashCode());
     return currentState.builder()
                        .changeCallInfoState()
@@ -177,7 +183,7 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
       webRtcInteractor.stopForegroundService();
     }
 
-    webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp());
+    webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp(), currentState.getCallSetupState().isRemoteVideoOffer());
 
     return terminate(currentState, remotePeer);
   }
@@ -205,7 +211,7 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
       }
 
       if (incomingBeforeAccept) {
-        webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp());
+        webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp(), currentState.getCallSetupState().isRemoteVideoOffer());
       }
     } else if (action.equals(ACTION_ENDED_REMOTE_BUSY) && remotePeerIsActive) {
       activePeer.receivedBusy();
@@ -214,7 +220,7 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
       ringer.start(OutgoingRinger.Type.BUSY);
       Util.runOnMainDelayed(ringer::stop, BUSY_TONE_LENGTH);
     } else if (action.equals(ACTION_ENDED_REMOTE_GLARE) && incomingBeforeAccept) {
-      webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp());
+      webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp(), currentState.getCallSetupState().isRemoteVideoOffer());
     }
 
     currentState = currentState.builder()
@@ -231,7 +237,7 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
   protected @NonNull WebRtcServiceState handleEnded(@NonNull WebRtcServiceState currentState, @NonNull String action, @NonNull RemotePeer remotePeer) {
     Log.i(tag, "handleEnded(): call_id: " + remotePeer.getCallId() + " action: " + action);
 
-    if (remotePeer.callIdEquals(currentState.getCallInfoState().getActivePeer())) {
+    if (remotePeer.callIdEquals(currentState.getCallInfoState().getActivePeer()) && !currentState.getCallInfoState().getCallState().isErrorState()) {
       currentState = currentState.builder()
                                  .changeCallInfoState()
                                  .callState(WebRtcViewModel.State.NETWORK_FAILURE)
@@ -241,9 +247,43 @@ public class ActiveCallActionProcessorDelegate extends WebRtcActionProcessor {
     }
 
     if (remotePeer.getState() == CallState.ANSWERING || remotePeer.getState() == CallState.LOCAL_RINGING) {
-      webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp());
+      webRtcInteractor.insertMissedCall(remotePeer, true, remotePeer.getCallStartTimestamp(), currentState.getCallSetupState().isRemoteVideoOffer());
     }
 
     return terminate(currentState, remotePeer);
+  }
+
+  @Override
+  protected  @NonNull WebRtcServiceState handleSetupFailure(@NonNull WebRtcServiceState currentState, @NonNull CallId callId) {
+    Log.i(tag, "handleSetupFailure(): call_id: " + callId);
+
+    RemotePeer activePeer = currentState.getCallInfoState().getActivePeer();
+
+    if (activePeer != null && activePeer.getCallId().equals(callId)) {
+      try {
+        if (activePeer.getState() == CallState.DIALING || activePeer.getState() == CallState.REMOTE_RINGING) {
+          webRtcInteractor.getCallManager().hangup();
+        } else {
+          webRtcInteractor.getCallManager().drop(callId);
+        }
+      } catch (CallException e) {
+        return callFailure(currentState, "Unable to drop call due to setup failure", e);
+      }
+
+      currentState = currentState.builder()
+                                 .changeCallInfoState()
+                                 .callState(WebRtcViewModel.State.NETWORK_FAILURE)
+                                 .build();
+
+      webRtcInteractor.sendMessage(currentState);
+
+      if (activePeer.getState() == CallState.ANSWERING || activePeer.getState() == CallState.LOCAL_RINGING) {
+        webRtcInteractor.insertMissedCall(activePeer, true, activePeer.getCallStartTimestamp(), currentState.getCallSetupState().isRemoteVideoOffer());
+      }
+
+      return terminate(currentState, activePeer);
+    }
+
+    return currentState;
   }
 }

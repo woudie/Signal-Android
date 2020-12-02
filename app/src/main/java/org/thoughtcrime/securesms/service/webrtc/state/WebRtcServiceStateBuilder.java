@@ -3,8 +3,10 @@ package org.thoughtcrime.securesms.service.webrtc.state;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.signal.ringrtc.GroupCall;
 import org.thoughtcrime.securesms.components.webrtc.BroadcastVideoSink;
 import org.thoughtcrime.securesms.events.CallParticipant;
+import org.thoughtcrime.securesms.events.CallParticipantId;
 import org.thoughtcrime.securesms.events.WebRtcViewModel;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.ringrtc.Camera;
@@ -125,6 +127,11 @@ public class WebRtcServiceStateBuilder {
       toBuild.acceptWithVideo = acceptWithVideo;
       return this;
     }
+
+    public @NonNull CallSetupStateBuilder sentJoinedMessage(boolean sentJoinedMessage) {
+      toBuild.sentJoinedMessage = sentJoinedMessage;
+      return this;
+    }
   }
 
   public class VideoStateBuilder {
@@ -192,8 +199,18 @@ public class WebRtcServiceStateBuilder {
       return this;
     }
 
+    public @NonNull CallInfoStateBuilder putParticipant(@NonNull CallParticipantId callParticipantId, @NonNull CallParticipant callParticipant) {
+      toBuild.remoteParticipants.put(callParticipantId, callParticipant);
+      return this;
+    }
+
     public @NonNull CallInfoStateBuilder putParticipant(@NonNull Recipient recipient, @NonNull CallParticipant callParticipant) {
-      toBuild.remoteParticipants.put(recipient, callParticipant);
+      toBuild.remoteParticipants.put(new CallParticipantId(recipient), callParticipant);
+      return this;
+    }
+
+    public @NonNull CallInfoStateBuilder clearParticipantMap() {
+      toBuild.remoteParticipants.clear();
       return this;
     }
 
@@ -214,6 +231,16 @@ public class WebRtcServiceStateBuilder {
 
     public @NonNull CallInfoStateBuilder activePeer(@Nullable RemotePeer activePeer) {
       toBuild.activePeer = activePeer;
+      return this;
+    }
+
+    public @NonNull CallInfoStateBuilder groupCall(@Nullable GroupCall groupCall) {
+      toBuild.groupCall = groupCall;
+      return this;
+    }
+
+    public @NonNull CallInfoStateBuilder groupCallState(@Nullable WebRtcViewModel.GroupCallState groupState) {
+      toBuild.groupState = groupState;
       return this;
     }
   }

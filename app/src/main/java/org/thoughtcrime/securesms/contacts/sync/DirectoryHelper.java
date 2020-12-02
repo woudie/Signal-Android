@@ -43,6 +43,7 @@ import org.thoughtcrime.securesms.storage.StorageSyncHelper;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.sms.IncomingJoinedMessage;
+import org.thoughtcrime.securesms.tracing.Trace;
 import org.thoughtcrime.securesms.util.ProfileUtil;
 import org.thoughtcrime.securesms.util.SetUtil;
 import org.thoughtcrime.securesms.util.Stopwatch;
@@ -72,6 +73,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Manages all the stuff around determining if a user is registered or not.
  */
+@Trace
 public class DirectoryHelper {
 
   private static final String TAG = Log.tag(DirectoryHelper.class);
@@ -83,7 +85,7 @@ public class DirectoryHelper {
       return;
     }
 
-    if (!Permissions.hasAll(context, Manifest.permission.WRITE_CONTACTS)) {
+    if (!Permissions.hasAll(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)) {
       Log.w(TAG, "No contact permissions. Skipping.");
       return;
     }
@@ -235,6 +237,7 @@ public class DirectoryHelper {
     Set<RecipientId>         inactiveIds   = Stream.of(allNumbers)
                                                    .filterNot(activeNumbers::contains)
                                                    .filterNot(n -> result.getNumberRewrites().containsKey(n))
+                                                   .filterNot(n -> result.getIgnoredNumbers().contains(n))
                                                    .map(recipientDatabase::getOrInsertFromE164)
                                                    .collect(Collectors.toSet());
 
@@ -468,12 +471,15 @@ public class DirectoryHelper {
   static class DirectoryResult {
     private final Map<String, UUID>   registeredNumbers;
     private final Map<String, String> numberRewrites;
+    private final Set<String>         ignoredNumbers;
 
     DirectoryResult(@NonNull Map<String, UUID> registeredNumbers,
-                    @NonNull Map<String, String> numberRewrites)
+                    @NonNull Map<String, String> numberRewrites,
+                    @NonNull Set<String> ignoredNumbers)
     {
       this.registeredNumbers = registeredNumbers;
       this.numberRewrites    = numberRewrites;
+      this.ignoredNumbers    = ignoredNumbers;
     }
 
 
@@ -483,6 +489,10 @@ public class DirectoryHelper {
 
     @NonNull Map<String, String> getNumberRewrites() {
       return numberRewrites;
+    }
+
+    @NonNull Set<String> getIgnoredNumbers() {
+      return ignoredNumbers;
     }
   }
 

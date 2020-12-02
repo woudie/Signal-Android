@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.signal.ringrtc.CallException;
+import org.signal.ringrtc.CallId;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.database.RecipientDatabase;
 import org.thoughtcrime.securesms.events.CallParticipant;
@@ -79,7 +80,7 @@ public class IncomingCallActionProcessor extends DeviceAwareActionProcessor {
     RemotePeer      activePeer      = currentState.getCallInfoState().requireActivePeer();
     boolean         hideIp          = !activePeer.getRecipient().isSystemContact() || isAlwaysTurn;
     VideoState      videoState      = currentState.getVideoState();
-    CallParticipant callParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteParticipant(activePeer.getRecipient()));
+    CallParticipant callParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteCallParticipant(activePeer.getRecipient()));
 
     try {
       webRtcInteractor.getCallManager().proceed(activePeer.getCallId(),
@@ -107,7 +108,7 @@ public class IncomingCallActionProcessor extends DeviceAwareActionProcessor {
 
     Log.i(TAG, "handleAcceptCall(): call_id: " + activePeer.getCallId());
 
-    DatabaseFactory.getSmsDatabase(context).insertReceivedCall(activePeer.getId());
+    DatabaseFactory.getSmsDatabase(context).insertReceivedCall(activePeer.getId(), currentState.getCallSetupState().isRemoteVideoOffer());
 
     currentState = currentState.builder()
                                .changeCallSetupState()
@@ -135,7 +136,7 @@ public class IncomingCallActionProcessor extends DeviceAwareActionProcessor {
 
     try {
       webRtcInteractor.getCallManager().hangup();
-      DatabaseFactory.getSmsDatabase(context).insertMissedCall(activePeer.getId(), System.currentTimeMillis());
+      DatabaseFactory.getSmsDatabase(context).insertMissedCall(activePeer.getId(), System.currentTimeMillis(), currentState.getCallSetupState().isRemoteVideoOffer());
       return terminate(currentState, activePeer);
     } catch  (CallException e) {
       return callFailure(currentState, "hangup() failed: ", e);
@@ -205,7 +206,12 @@ public class IncomingCallActionProcessor extends DeviceAwareActionProcessor {
   }
 
   @Override
-  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @NonNull RemotePeer remotePeer) {
+  protected  @NonNull WebRtcServiceState handleSetupFailure(@NonNull WebRtcServiceState currentState, @NonNull CallId callId) {
+    return activeCallDelegate.handleSetupFailure(currentState, callId);
+  }
+
+  @Override
+  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @Nullable RemotePeer remotePeer) {
     return activeCallDelegate.handleCallConcluded(currentState, remotePeer);
   }
 

@@ -1,23 +1,22 @@
 package org.thoughtcrime.securesms.util;
 
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface.OnClickListener;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.documentfile.provider.DocumentFile;
-
 import android.os.Build;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+
 import org.thoughtcrime.securesms.R;
-import org.thoughtcrime.securesms.database.NoExternalStorageException;
 import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.mms.PartAuthority;
 import org.thoughtcrime.securesms.util.task.ProgressDialogAsyncTask;
@@ -30,6 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
+import java.util.Objects;
 
 public class SaveAttachmentTask extends ProgressDialogAsyncTask<SaveAttachmentTask.Attachment, Void, Pair<Integer, String>> {
   private static final String TAG = SaveAttachmentTask.class.getSimpleName();
@@ -89,7 +89,7 @@ public class SaveAttachmentTask extends ProgressDialogAsyncTask<SaveAttachmentTa
 
   private @Nullable String saveAttachment(Context context, Attachment attachment) throws IOException
   {
-    String      contentType = MediaUtil.getCorrectedMimeType(attachment.contentType);
+    String      contentType = Objects.requireNonNull(MediaUtil.getCorrectedMimeType(attachment.contentType));
     String         fileName = attachment.fileName;
 
     if (fileName == null) fileName = generateOutputFileName(contentType, attachment.date);
@@ -104,15 +104,15 @@ public class SaveAttachmentTask extends ProgressDialogAsyncTask<SaveAttachmentTa
         return null;
       }
 
-      if (outputUri.equals(StorageUtil.getLegacyDownloadUri())) {
+      if (Objects.equals(outputUri.getScheme(), ContentResolver.SCHEME_FILE)) {
         try (OutputStream outputStream = new FileOutputStream(mediaUri.getPath())) {
           Util.copy(inputStream, outputStream);
           MediaScannerConnection.scanFile(context, new String[]{mediaUri.getPath()}, new String[]{contentType}, null);
         }
-      }
-
-      try (OutputStream outputStream = context.getContentResolver().openOutputStream(mediaUri)) {
-        Util.copy(inputStream, outputStream);
+      } else {
+        try (OutputStream outputStream = context.getContentResolver().openOutputStream(mediaUri, "w")) {
+          Util.copy(inputStream, outputStream);
+        }
       }
     }
 
@@ -153,17 +153,22 @@ public class SaveAttachmentTask extends ProgressDialogAsyncTask<SaveAttachmentTa
   }
 
   private Uri createOutputUri(@NonNull Uri outputUri, @NonNull String fileName) throws IOException {
+    String[] fileParts = getFileNameParts(fileName);
+    String   base      = fileParts[0];
+    String   extension = fileParts[1];
+    String   mimeType  = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+
     ContentValues contentValues = new ContentValues();
     contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+    contentValues.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+    contentValues.put(MediaStore.MediaColumns.DATE_ADDED, System.currentTimeMillis());
+    contentValues.put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis());
 
     if (Build.VERSION.SDK_INT > 28) {
       contentValues.put(MediaStore.MediaColumns.IS_PENDING, 1);
     }
 
-    if (Build.VERSION.SDK_INT <= 28 && outputUri.equals(StorageUtil.getLegacyDownloadUri())) {
-      String[] fileParts       = getFileNameParts(fileName);
-      String   base            = fileParts[0];
-      String   extension       = fileParts[1];
+    if (Build.VERSION.SDK_INT <= 28 && Objects.equals(outputUri.getScheme(), ContentResolver.SCHEME_FILE)) {
       File     outputDirectory = new File(outputUri.getPath());
       File     outputFile      = new File(outputDirectory, base + "." + extension);
 
@@ -245,7 +250,7 @@ public class SaveAttachmentTask extends ProgressDialogAsyncTask<SaveAttachmentTa
   public static void showWarningDialog(Context context, OnClickListener onAcceptListener, int count) {
     AlertDialog.Builder builder = new AlertDialog.Builder(context);
     builder.setTitle(R.string.ConversationFragment_save_to_sd_card);
-    builder.setIconAttribute(R.attr.dialog_alert_icon);
+    builder.setIcon(R.drawable.ic_warning);
     builder.setCancelable(true);
     builder.setMessage(context.getResources().getQuantityString(R.plurals.ConversationFragment_saving_n_media_to_storage_warning,
                                                                 count, count));

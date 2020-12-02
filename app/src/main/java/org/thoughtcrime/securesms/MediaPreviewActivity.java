@@ -18,12 +18,14 @@ package org.thoughtcrime.securesms;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Menu;
@@ -37,6 +39,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ShareCompat;
 import androidx.core.util.Pair;
 import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
@@ -61,6 +65,7 @@ import org.thoughtcrime.securesms.mediapreview.MediaPreviewFragment;
 import org.thoughtcrime.securesms.mediapreview.MediaPreviewViewModel;
 import org.thoughtcrime.securesms.mediapreview.MediaRailAdapter;
 import org.thoughtcrime.securesms.mms.GlideApp;
+import org.thoughtcrime.securesms.mms.PartAuthority;
 import org.thoughtcrime.securesms.permissions.Permissions;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
@@ -136,6 +141,12 @@ public final class MediaPreviewActivity extends PassphraseRequiredActivity
     intent.putExtra(MediaPreviewActivity.LEFT_IS_RECENT_EXTRA, leftIsRecent);
     intent.setDataAndType(attachment.getUri(), mediaRecord.getContentType());
     return intent;
+  }
+
+  @Override
+  protected void attachBaseContext(@NonNull Context newBase) {
+    getDelegate().setLocalNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+    super.attachBaseContext(newBase);
   }
 
   @SuppressWarnings("ConstantConditions")
@@ -378,6 +389,27 @@ public final class MediaPreviewActivity extends PassphraseRequiredActivity
     }
   }
 
+  private void share() {
+    MediaItem mediaItem = getCurrentMediaItem();
+
+    if (mediaItem != null) {
+      Uri    publicUri   = PartAuthority.getAttachmentPublicUri(mediaItem.uri);
+      String mimeType    = Intent.normalizeMimeType(mediaItem.type);
+      Intent shareIntent = ShareCompat.IntentBuilder.from(this)
+                                                    .setStream(publicUri)
+                                                    .setType(mimeType)
+                                                    .createChooserIntent()
+                                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+      try {
+        startActivity(shareIntent);
+      } catch (ActivityNotFoundException e) {
+        Log.w(TAG, "No activity existed to share the media.", e);
+        Toast.makeText(this, R.string.MediaPreviewActivity_cant_find_an_app_able_to_share_this_media, Toast.LENGTH_LONG).show();
+      }
+    }
+  }
+
   @SuppressWarnings("CodeBlock2Expr")
   @SuppressLint("InlinedApi")
   private void saveToDisk() {
@@ -417,7 +449,7 @@ public final class MediaPreviewActivity extends PassphraseRequiredActivity
     }
 
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    builder.setIconAttribute(R.attr.dialog_alert_icon);
+    builder.setIcon(R.drawable.ic_warning);
     builder.setTitle(R.string.MediaPreviewActivity_media_delete_confirmation_title);
     builder.setMessage(R.string.MediaPreviewActivity_media_delete_confirmation_message);
     builder.setCancelable(true);
@@ -455,6 +487,9 @@ public final class MediaPreviewActivity extends PassphraseRequiredActivity
       menu.findItem(R.id.delete).setVisible(false);
     }
 
+    // Restricted to API26 because of MemoryFileUtil not supporting lower API levels well
+    menu.findItem(R.id.media_preview__share).setVisible(Build.VERSION.SDK_INT >= 26);
+
     if (cameFromAllMedia) {
       menu.findItem(R.id.media_preview__overview).setVisible(false);
     }
@@ -464,16 +499,17 @@ public final class MediaPreviewActivity extends PassphraseRequiredActivity
   }
 
   @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
+  public boolean onOptionsItemSelected(@NonNull MenuItem item) {
     super.onOptionsItemSelected(item);
 
-    switch (item.getItemId()) {
-      case R.id.media_preview__overview: showOverview(); return true;
-      case R.id.media_preview__forward:  forward();      return true;
-      case R.id.save:                    saveToDisk();   return true;
-      case R.id.delete:                  deleteMedia();  return true;
-      case android.R.id.home:            finish();       return true;
-    }
+    int itemId = item.getItemId();
+
+    if (itemId == R.id.media_preview__overview) { showOverview(); return true; }
+    if (itemId == R.id.media_preview__forward)  { forward();      return true; }
+    if (itemId == R.id.media_preview__share)    { share();        return true; }
+    if (itemId == R.id.save)                    { saveToDisk();   return true; }
+    if (itemId == R.id.delete)                  { deleteMedia();  return true; }
+    if (itemId == android.R.id.home)            { finish();       return true; }
 
     return false;
   }

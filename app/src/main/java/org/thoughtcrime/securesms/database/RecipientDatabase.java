@@ -35,11 +35,13 @@ import org.thoughtcrime.securesms.jobs.RetrieveProfileJob;
 import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.profiles.AvatarHelper;
 import org.thoughtcrime.securesms.profiles.ProfileName;
+import org.thoughtcrime.securesms.recipients.LiveRecipient;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.storage.StorageSyncHelper;
 import org.thoughtcrime.securesms.storage.StorageSyncHelper.RecordUpdate;
 import org.thoughtcrime.securesms.storage.StorageSyncModels;
+import org.thoughtcrime.securesms.tracing.Trace;
 import org.thoughtcrime.securesms.util.Base64;
 import org.thoughtcrime.securesms.util.Bitmask;
 import org.thoughtcrime.securesms.util.CursorUtil;
@@ -79,51 +81,53 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Trace
 public class RecipientDatabase extends Database {
 
   private static final String TAG = RecipientDatabase.class.getSimpleName();
 
-          static final String TABLE_NAME               = "recipient";
-  public  static final String ID                       = "_id";
-  private static final String UUID                     = "uuid";
-  private static final String USERNAME                 = "username";
-  public  static final String PHONE                    = "phone";
-  public  static final String EMAIL                    = "email";
-          static final String GROUP_ID                 = "group_id";
-  private static final String GROUP_TYPE               = "group_type";
-  private static final String BLOCKED                  = "blocked";
-  private static final String MESSAGE_RINGTONE         = "message_ringtone";
-  private static final String MESSAGE_VIBRATE          = "message_vibrate";
-  private static final String CALL_RINGTONE            = "call_ringtone";
-  private static final String CALL_VIBRATE             = "call_vibrate";
-  private static final String NOTIFICATION_CHANNEL     = "notification_channel";
-  private static final String MUTE_UNTIL               = "mute_until";
-  private static final String COLOR                    = "color";
-  private static final String SEEN_INVITE_REMINDER     = "seen_invite_reminder";
-  private static final String DEFAULT_SUBSCRIPTION_ID  = "default_subscription_id";
-  private static final String MESSAGE_EXPIRATION_TIME  = "message_expiration_time";
-  public  static final String REGISTERED               = "registered";
-  public  static final String SYSTEM_DISPLAY_NAME      = "system_display_name";
-  private static final String SYSTEM_PHOTO_URI         = "system_photo_uri";
-  public  static final String SYSTEM_PHONE_TYPE        = "system_phone_type";
-  public  static final String SYSTEM_PHONE_LABEL       = "system_phone_label";
-  private static final String SYSTEM_CONTACT_URI       = "system_contact_uri";
-  private static final String SYSTEM_INFO_PENDING      = "system_info_pending";
-  private static final String PROFILE_KEY              = "profile_key";
-  private static final String PROFILE_KEY_CREDENTIAL   = "profile_key_credential";
-  private static final String SIGNAL_PROFILE_AVATAR    = "signal_profile_avatar";
-  private static final String PROFILE_SHARING          = "profile_sharing";
-  private static final String LAST_PROFILE_FETCH       = "last_profile_fetch";
-  private static final String UNIDENTIFIED_ACCESS_MODE = "unidentified_access_mode";
-  private static final String FORCE_SMS_SELECTION      = "force_sms_selection";
-  private static final String CAPABILITIES             = "capabilities";
-  private static final String STORAGE_SERVICE_ID       = "storage_service_key";
-  private static final String DIRTY                    = "dirty";
-  private static final String PROFILE_GIVEN_NAME       = "signal_profile_name";
-  private static final String PROFILE_FAMILY_NAME      = "profile_family_name";
-  private static final String PROFILE_JOINED_NAME      = "profile_joined_name";
-  private static final String MENTION_SETTING          = "mention_setting";
-  private static final String STORAGE_PROTO            = "storage_proto";
+          static final String TABLE_NAME                = "recipient";
+  public  static final String ID                        = "_id";
+  private static final String UUID                      = "uuid";
+  private static final String USERNAME                  = "username";
+  public  static final String PHONE                     = "phone";
+  public  static final String EMAIL                     = "email";
+          static final String GROUP_ID                  = "group_id";
+          static final String GROUP_TYPE                = "group_type";
+  private static final String BLOCKED                   = "blocked";
+  private static final String MESSAGE_RINGTONE          = "message_ringtone";
+  private static final String MESSAGE_VIBRATE           = "message_vibrate";
+  private static final String CALL_RINGTONE             = "call_ringtone";
+  private static final String CALL_VIBRATE              = "call_vibrate";
+  private static final String NOTIFICATION_CHANNEL      = "notification_channel";
+  private static final String MUTE_UNTIL                = "mute_until";
+  private static final String COLOR                     = "color";
+  private static final String SEEN_INVITE_REMINDER      = "seen_invite_reminder";
+  private static final String DEFAULT_SUBSCRIPTION_ID   = "default_subscription_id";
+  private static final String MESSAGE_EXPIRATION_TIME   = "message_expiration_time";
+  public  static final String REGISTERED                = "registered";
+  public  static final String SYSTEM_DISPLAY_NAME       = "system_display_name";
+  private static final String SYSTEM_PHOTO_URI          = "system_photo_uri";
+  public  static final String SYSTEM_PHONE_TYPE         = "system_phone_type";
+  public  static final String SYSTEM_PHONE_LABEL        = "system_phone_label";
+  private static final String SYSTEM_CONTACT_URI        = "system_contact_uri";
+  private static final String SYSTEM_INFO_PENDING       = "system_info_pending";
+  private static final String PROFILE_KEY               = "profile_key";
+  private static final String PROFILE_KEY_CREDENTIAL    = "profile_key_credential";
+  private static final String SIGNAL_PROFILE_AVATAR     = "signal_profile_avatar";
+  private static final String PROFILE_SHARING           = "profile_sharing";
+  private static final String LAST_PROFILE_FETCH        = "last_profile_fetch";
+  private static final String UNIDENTIFIED_ACCESS_MODE  = "unidentified_access_mode";
+  private static final String FORCE_SMS_SELECTION       = "force_sms_selection";
+  private static final String CAPABILITIES              = "capabilities";
+  private static final String STORAGE_SERVICE_ID        = "storage_service_key";
+  private static final String DIRTY                     = "dirty";
+  private static final String PROFILE_GIVEN_NAME        = "signal_profile_name";
+  private static final String PROFILE_FAMILY_NAME       = "profile_family_name";
+  private static final String PROFILE_JOINED_NAME       = "profile_joined_name";
+  private static final String MENTION_SETTING           = "mention_setting";
+  private static final String STORAGE_PROTO             = "storage_proto";
+  private static final String LAST_GV1_MIGRATE_REMINDER = "last_gv1_migrate_reminder";
 
   public  static final String SEARCH_PROFILE_NAME      = "search_signal_profile";
   private static final String SORT_NAME                = "sort_name";
@@ -302,46 +306,47 @@ public class RecipientDatabase extends Database {
   }
 
   public static final String CREATE_TABLE =
-      "CREATE TABLE " + TABLE_NAME + " (" + ID                       + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                                            UUID                     + " TEXT UNIQUE DEFAULT NULL, " +
-                                            USERNAME                 + " TEXT UNIQUE DEFAULT NULL, " +
-                                            PHONE                    + " TEXT UNIQUE DEFAULT NULL, " +
-                                            EMAIL                    + " TEXT UNIQUE DEFAULT NULL, " +
-                                            GROUP_ID                 + " TEXT UNIQUE DEFAULT NULL, " +
-                                            GROUP_TYPE               + " INTEGER DEFAULT " + GroupType.NONE.getId() +  ", " +
-                                            BLOCKED                  + " INTEGER DEFAULT 0," +
-                                            MESSAGE_RINGTONE         + " TEXT DEFAULT NULL, " +
-                                            MESSAGE_VIBRATE          + " INTEGER DEFAULT " + VibrateState.DEFAULT.getId() + ", " +
-                                            CALL_RINGTONE            + " TEXT DEFAULT NULL, " +
-                                            CALL_VIBRATE             + " INTEGER DEFAULT " + VibrateState.DEFAULT.getId() + ", " +
-                                            NOTIFICATION_CHANNEL     + " TEXT DEFAULT NULL, " +
-                                            MUTE_UNTIL               + " INTEGER DEFAULT 0, " +
-                                            COLOR                    + " TEXT DEFAULT NULL, " +
-                                            SEEN_INVITE_REMINDER     + " INTEGER DEFAULT " + InsightsBannerTier.NO_TIER.getId() + ", " +
-                                            DEFAULT_SUBSCRIPTION_ID  + " INTEGER DEFAULT -1, " +
-                                            MESSAGE_EXPIRATION_TIME  + " INTEGER DEFAULT 0, " +
-                                            REGISTERED               + " INTEGER DEFAULT " + RegisteredState.UNKNOWN.getId() + ", " +
-                                            SYSTEM_DISPLAY_NAME      + " TEXT DEFAULT NULL, " +
-                                            SYSTEM_PHOTO_URI         + " TEXT DEFAULT NULL, " +
-                                            SYSTEM_PHONE_LABEL       + " TEXT DEFAULT NULL, " +
-                                            SYSTEM_PHONE_TYPE        + " INTEGER DEFAULT -1, " +
-                                            SYSTEM_CONTACT_URI       + " TEXT DEFAULT NULL, " +
-                                            SYSTEM_INFO_PENDING      + " INTEGER DEFAULT 0, " +
-                                            PROFILE_KEY              + " TEXT DEFAULT NULL, " +
-                                            PROFILE_KEY_CREDENTIAL   + " TEXT DEFAULT NULL, " +
-                                            PROFILE_GIVEN_NAME       + " TEXT DEFAULT NULL, " +
-                                            PROFILE_FAMILY_NAME      + " TEXT DEFAULT NULL, " +
-                                            PROFILE_JOINED_NAME      + " TEXT DEFAULT NULL, " +
-                                            SIGNAL_PROFILE_AVATAR    + " TEXT DEFAULT NULL, " +
-                                            PROFILE_SHARING          + " INTEGER DEFAULT 0, " +
-                                            LAST_PROFILE_FETCH       + " INTEGER DEFAULT 0, " +
-                                            UNIDENTIFIED_ACCESS_MODE + " INTEGER DEFAULT 0, " +
-                                            FORCE_SMS_SELECTION      + " INTEGER DEFAULT 0, " +
-                                            STORAGE_SERVICE_ID       + " TEXT UNIQUE DEFAULT NULL, " +
-                                            DIRTY                    + " INTEGER DEFAULT " + DirtyState.CLEAN.getId() + ", " +
-                                            MENTION_SETTING          + " INTEGER DEFAULT " + MentionSetting.ALWAYS_NOTIFY.getId() + ", " +
-                                            STORAGE_PROTO            + " TEXT DEFAULT NULL, " +
-                                            CAPABILITIES             + " INTEGER DEFAULT 0);";
+      "CREATE TABLE " + TABLE_NAME + " (" + ID                        + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                                            UUID                      + " TEXT UNIQUE DEFAULT NULL, " +
+                                            USERNAME                  + " TEXT UNIQUE DEFAULT NULL, " +
+                                            PHONE                     + " TEXT UNIQUE DEFAULT NULL, " +
+                                            EMAIL                     + " TEXT UNIQUE DEFAULT NULL, " +
+                                            GROUP_ID                  + " TEXT UNIQUE DEFAULT NULL, " +
+                                            GROUP_TYPE                + " INTEGER DEFAULT " + GroupType.NONE.getId() +  ", " +
+                                            BLOCKED                   + " INTEGER DEFAULT 0," +
+                                            MESSAGE_RINGTONE          + " TEXT DEFAULT NULL, " +
+                                            MESSAGE_VIBRATE           + " INTEGER DEFAULT " + VibrateState.DEFAULT.getId() + ", " +
+                                            CALL_RINGTONE             + " TEXT DEFAULT NULL, " +
+                                            CALL_VIBRATE              + " INTEGER DEFAULT " + VibrateState.DEFAULT.getId() + ", " +
+                                            NOTIFICATION_CHANNEL      + " TEXT DEFAULT NULL, " +
+                                            MUTE_UNTIL                + " INTEGER DEFAULT 0, " +
+                                            COLOR                     + " TEXT DEFAULT NULL, " +
+                                            SEEN_INVITE_REMINDER      + " INTEGER DEFAULT " + InsightsBannerTier.NO_TIER.getId() + ", " +
+                                            DEFAULT_SUBSCRIPTION_ID   + " INTEGER DEFAULT -1, " +
+                                            MESSAGE_EXPIRATION_TIME   + " INTEGER DEFAULT 0, " +
+                                            REGISTERED                + " INTEGER DEFAULT " + RegisteredState.UNKNOWN.getId() + ", " +
+                                            SYSTEM_DISPLAY_NAME       + " TEXT DEFAULT NULL, " +
+                                            SYSTEM_PHOTO_URI          + " TEXT DEFAULT NULL, " +
+                                            SYSTEM_PHONE_LABEL        + " TEXT DEFAULT NULL, " +
+                                            SYSTEM_PHONE_TYPE         + " INTEGER DEFAULT -1, " +
+                                            SYSTEM_CONTACT_URI        + " TEXT DEFAULT NULL, " +
+                                            SYSTEM_INFO_PENDING       + " INTEGER DEFAULT 0, " +
+                                            PROFILE_KEY               + " TEXT DEFAULT NULL, " +
+                                            PROFILE_KEY_CREDENTIAL    + " TEXT DEFAULT NULL, " +
+                                            PROFILE_GIVEN_NAME        + " TEXT DEFAULT NULL, " +
+                                            PROFILE_FAMILY_NAME       + " TEXT DEFAULT NULL, " +
+                                            PROFILE_JOINED_NAME       + " TEXT DEFAULT NULL, " +
+                                            SIGNAL_PROFILE_AVATAR     + " TEXT DEFAULT NULL, " +
+                                            PROFILE_SHARING           + " INTEGER DEFAULT 0, " +
+                                            LAST_PROFILE_FETCH        + " INTEGER DEFAULT 0, " +
+                                            UNIDENTIFIED_ACCESS_MODE  + " INTEGER DEFAULT 0, " +
+                                            FORCE_SMS_SELECTION       + " INTEGER DEFAULT 0, " +
+                                            STORAGE_SERVICE_ID        + " TEXT UNIQUE DEFAULT NULL, " +
+                                            DIRTY                     + " INTEGER DEFAULT " + DirtyState.CLEAN.getId() + ", " +
+                                            MENTION_SETTING           + " INTEGER DEFAULT " + MentionSetting.ALWAYS_NOTIFY.getId() + ", " +
+                                            STORAGE_PROTO             + " TEXT DEFAULT NULL, " +
+                                            CAPABILITIES              + " INTEGER DEFAULT 0, " +
+                                            LAST_GV1_MIGRATE_REMINDER + " INTEGER DEFAULT 0);";
 
   private static final String INSIGHTS_INVITEE_LIST = "SELECT " + TABLE_NAME + "." + ID +
       " FROM " + TABLE_NAME +
@@ -377,8 +382,8 @@ public class RecipientDatabase extends Database {
     return getByColumn(EMAIL, email);
   }
 
-  public @NonNull Optional<RecipientId> getByGroupId(@NonNull String groupId) {
-    return getByColumn(GROUP_ID, groupId);
+  public @NonNull Optional<RecipientId> getByGroupId(@NonNull GroupId groupId) {
+    return getByColumn(GROUP_ID, groupId.toString());
 
   }
 
@@ -554,27 +559,94 @@ public class RecipientDatabase extends Database {
   }
 
   public @NonNull RecipientId getOrInsertFromGroupId(@NonNull GroupId groupId) {
-    GetOrInsertResult result = getOrInsertByColumn(GROUP_ID, groupId.toString());
+    Optional<RecipientId> existing = getByGroupId(groupId);
 
-    if (result.neededInsert) {
+    if (existing.isPresent()) {
+      return existing.get();
+    } else if (groupId.isV1() && DatabaseFactory.getGroupDatabase(context).groupExists(groupId.requireV1().deriveV2MigrationGroupId())) {
+      throw new GroupDatabase.LegacyGroupInsertException(groupId);
+    } else if (groupId.isV2() && DatabaseFactory.getGroupDatabase(context).getGroupV1ByExpectedV2(groupId.requireV2()).isPresent()) {
+      throw new GroupDatabase.MissedGroupMigrationInsertException(groupId);
+    } else {
       ContentValues values = new ContentValues();
+      values.put(GROUP_ID, groupId.toString());
 
-      if (groupId.isMms()) {
-        values.put(GROUP_TYPE, GroupType.MMS.getId());
-      } else {
-        if (groupId.isV2()) {
-          values.put(GROUP_TYPE, GroupType.SIGNAL_V2.getId());
+      long id = databaseHelper.getWritableDatabase().insert(TABLE_NAME, null, values);
+
+      if (id < 0) {
+        existing = getByColumn(GROUP_ID, groupId.toString());
+
+        if (existing.isPresent()) {
+          return existing.get();
+        } else if (groupId.isV1() && DatabaseFactory.getGroupDatabase(context).groupExists(groupId.requireV1().deriveV2MigrationGroupId())) {
+          throw new GroupDatabase.LegacyGroupInsertException(groupId);
+        } else if (groupId.isV2() && DatabaseFactory.getGroupDatabase(context).getGroupV1ByExpectedV2(groupId.requireV2()).isPresent()) {
+          throw new GroupDatabase.MissedGroupMigrationInsertException(groupId);
         } else {
-          values.put(GROUP_TYPE, GroupType.SIGNAL_V1.getId());
+          throw new AssertionError("Failed to insert recipient!");
         }
-        values.put(DIRTY, DirtyState.INSERT.getId());
-        values.put(STORAGE_SERVICE_ID, Base64.encodeBytes(StorageSyncHelper.generateKey()));
+      } else {
+        ContentValues groupUpdates = new ContentValues();
+
+        if (groupId.isMms()) {
+          groupUpdates.put(GROUP_TYPE, GroupType.MMS.getId());
+        } else {
+          if (groupId.isV2()) {
+            groupUpdates.put(GROUP_TYPE, GroupType.SIGNAL_V2.getId());
+          } else {
+            groupUpdates.put(GROUP_TYPE, GroupType.SIGNAL_V1.getId());
+          }
+          groupUpdates.put(DIRTY, DirtyState.INSERT.getId());
+          groupUpdates.put(STORAGE_SERVICE_ID, Base64.encodeBytes(StorageSyncHelper.generateKey()));
+        }
+
+        RecipientId recipientId = RecipientId.from(id);
+
+        update(recipientId, groupUpdates);
+
+        return recipientId;
+      }
+    }
+  }
+
+  /**
+   * See {@link Recipient#externalPossiblyMigratedGroup(Context, GroupId)}.
+   */
+  public @NonNull RecipientId getOrInsertFromPossiblyMigratedGroupId(@NonNull GroupId groupId) {
+    SQLiteDatabase db = databaseHelper.getWritableDatabase();
+
+    db.beginTransaction();
+    try {
+      Optional<RecipientId> existing = getByColumn(GROUP_ID, groupId.toString());
+
+      if (existing.isPresent()) {
+        db.setTransactionSuccessful();
+        return existing.get();
       }
 
-      update(result.recipientId, values);
-    }
+      if (groupId.isV1()) {
+        Optional<RecipientId> v2 = getByGroupId(groupId.requireV1().deriveV2MigrationGroupId());
+        if (v2.isPresent()) {
+          db.setTransactionSuccessful();
+          return v2.get();
+        }
+      }
 
-    return result.recipientId;
+      if (groupId.isV2()) {
+        Optional<GroupDatabase.GroupRecord> v1 = DatabaseFactory.getGroupDatabase(context).getGroupV1ByExpectedV2(groupId.requireV2());
+        if (v1.isPresent()) {
+          db.setTransactionSuccessful();
+          return v1.get().getRecipientId();
+        }
+      }
+
+      RecipientId id = getOrInsertFromGroupId(groupId);
+
+      db.setTransactionSuccessful();
+      return id;
+    } finally {
+      db.endTransaction();
+    }
   }
 
   public Cursor getBlocked() {
@@ -850,7 +922,7 @@ public class RecipientDatabase extends Database {
       for (SignalGroupV1Record insert : groupV1Inserts) {
         db.insertOrThrow(TABLE_NAME, null, getValuesForStorageGroupV1(insert));
 
-        Recipient recipient = Recipient.externalGroup(context, GroupId.v1orThrow(insert.getGroupId()));
+        Recipient recipient = Recipient.externalGroupExact(context, GroupId.v1orThrow(insert.getGroupId()));
 
         threadDatabase.applyStorageSyncUpdate(recipient.getId(), insert);
         needsRefresh.add(recipient.getId());
@@ -864,7 +936,7 @@ public class RecipientDatabase extends Database {
           throw new AssertionError("Had an update, but it didn't match any rows!");
         }
 
-        Recipient recipient = Recipient.externalGroup(context, GroupId.v1orThrow(update.getOld().getGroupId()));
+        Recipient recipient = Recipient.externalGroupExact(context, GroupId.v1orThrow(update.getOld().getGroupId()));
 
         threadDatabase.applyStorageSyncUpdate(recipient.getId(), update.getNew());
         needsRefresh.add(recipient.getId());
@@ -875,7 +947,7 @@ public class RecipientDatabase extends Database {
         GroupId.V2     groupId   = GroupId.v2(masterKey);
         ContentValues  values    = getValuesForStorageGroupV2(insert);
         long           id        = db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
-        Recipient      recipient = Recipient.externalGroup(context, groupId);
+        Recipient      recipient = Recipient.externalGroupExact(context, groupId);
 
         if (id < 0) {
           Log.w(TAG, String.format("Recipient %s is already linked to group %s", recipient.getId(), groupId));
@@ -907,7 +979,7 @@ public class RecipientDatabase extends Database {
         }
 
         GroupMasterKey masterKey = update.getOld().getMasterKeyOrThrow();
-        Recipient      recipient = Recipient.externalGroup(context, GroupId.v2(masterKey));
+        Recipient      recipient = Recipient.externalGroupExact(context, GroupId.v2(masterKey));
 
         threadDatabase.applyStorageSyncUpdate(recipient.getId(), update.getNew());
         needsRefresh.add(recipient.getId());
@@ -1128,7 +1200,7 @@ public class RecipientDatabase extends Database {
     }
 
     for (GroupId.V2 id : DatabaseFactory.getGroupDatabase(context).getAllGroupV2Ids()) {
-      Recipient         recipient                = Recipient.externalGroup(context, id);
+      Recipient         recipient                = Recipient.externalGroupExact(context, id);
       RecipientId       recipientId              = recipient.getId();
       RecipientSettings recipientSettingsForSync = getRecipientSettingsForSync(recipientId);
 
@@ -1409,6 +1481,26 @@ public class RecipientDatabase extends Database {
     }
   }
 
+  public void markGroupsV1MigrationReminderSeen(@NonNull RecipientId id, long time) {
+    ContentValues values = new ContentValues(1);
+    values.put(LAST_GV1_MIGRATE_REMINDER, time);
+    if (update(id, values)) {
+      Recipient.live(id).refresh();
+    }
+  }
+
+  public long getGroupsV1MigrationReminderLastSeen(@NonNull RecipientId id) {
+    SQLiteDatabase db = databaseHelper.getReadableDatabase();
+
+    try (Cursor cursor = db.query(TABLE_NAME, new String[] { LAST_GV1_MIGRATE_REMINDER }, ID_WHERE, SqlUtil.buildArgs(id), null, null, null)) {
+      if (cursor.moveToFirst()) {
+        return CursorUtil.requireLong(cursor, LAST_GV1_MIGRATE_REMINDER);
+      }
+    }
+
+    return 0;
+  }
+
   public void setCapabilities(@NonNull RecipientId id, @NonNull SignalServiceProfile.Capabilities capabilities) {
     long value = 0;
 
@@ -1565,6 +1657,27 @@ public class RecipientDatabase extends Database {
     }
 
     return updated;
+  }
+
+  public @NonNull List<RecipientId> getSimilarRecipientIds(@NonNull Recipient recipient) {
+    SQLiteDatabase db   = databaseHelper.getReadableDatabase();
+    String[] projection = SqlUtil.buildArgs(ID, "COALESCE(" + nullIfEmpty(SYSTEM_DISPLAY_NAME) + ", " + nullIfEmpty(PROFILE_JOINED_NAME) + ") AS checked_name");
+    String   where      =  "checked_name = ?";
+
+    String[] arguments = SqlUtil.buildArgs(recipient.getProfileName().toString());
+
+    try (Cursor cursor = db.query(TABLE_NAME, projection, where, arguments, null, null, null)) {
+      if (cursor == null || cursor.getCount() == 0) {
+        return Collections.emptyList();
+      }
+
+      List<RecipientId> results = new ArrayList<>(cursor.getCount());
+      while (cursor.moveToNext()) {
+        results.add(RecipientId.from(CursorUtil.requireLong(cursor, ID)));
+      }
+
+      return results;
+    }
   }
 
   public void setProfileName(@NonNull RecipientId id, @NonNull ProfileName profileName) {
@@ -2274,6 +2387,24 @@ public class RecipientDatabase extends Database {
   }
 
   /**
+   * Updates a group recipient with a new V2 group ID. Should only be done as a part of GV1->GV2
+   * migration.
+   */
+  void updateGroupId(@NonNull GroupId.V1 v1Id, @NonNull GroupId.V2 v2Id) {
+    ContentValues values = new ContentValues();
+    values.put(GROUP_ID, v2Id.toString());
+    values.put(GROUP_TYPE, GroupType.SIGNAL_V2.getId());
+
+    SqlUtil.Query query = SqlUtil.buildTrueUpdateQuery(GROUP_ID + " = ?", SqlUtil.buildArgs(v1Id), values);
+
+    if (update(query, values)) {
+      RecipientId id = getByGroupId(v2Id).get();
+      markDirty(id, DirtyState.UPDATE);
+      Recipient.live(id).refresh();
+    }
+  }
+
+  /**
    * Will update the database with the content values you specified. It will make an intelligent
    * query such that this will only return true if a row was *actually* updated.
    */
@@ -2909,6 +3040,11 @@ public class RecipientDatabase extends Database {
       }
 
       return getCurrent();
+    }
+
+    public int getCount() {
+      if (cursor != null) return cursor.getCount();
+      else                return 0;
     }
 
     public void close() {

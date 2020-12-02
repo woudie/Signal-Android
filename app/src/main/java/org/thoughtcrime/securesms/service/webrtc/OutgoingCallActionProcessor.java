@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.signal.ringrtc.CallException;
+import org.signal.ringrtc.CallId;
 import org.thoughtcrime.securesms.crypto.IdentityKeyUtil;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.events.CallParticipant;
@@ -66,6 +67,7 @@ public class OutgoingCallActionProcessor extends DeviceAwareActionProcessor {
 
     AudioManager androidAudioManager = ServiceUtil.getAudioManager(context);
     androidAudioManager.setSpeakerphoneOn(false);
+    WebRtcUtil.enableSpeakerPhoneIfNeeded(context, currentState.getCallSetupState().isEnableVideoOnCreate());
 
     webRtcInteractor.updatePhoneState(WebRtcUtil.getInCallPhoneState(context));
     webRtcInteractor.initializeAudioForCall();
@@ -74,7 +76,7 @@ public class OutgoingCallActionProcessor extends DeviceAwareActionProcessor {
 
     webRtcInteractor.setCallInProgressNotification(TYPE_OUTGOING_RINGING, remotePeer);
 
-    DatabaseFactory.getSmsDatabase(context).insertOutgoingCall(remotePeer.getId());
+    DatabaseFactory.getSmsDatabase(context).insertOutgoingCall(remotePeer.getId(), currentState.getCallSetupState().isEnableVideoOnCreate());
 
     webRtcInteractor.retrieveTurnServers(remotePeer);
 
@@ -105,7 +107,7 @@ public class OutgoingCallActionProcessor extends DeviceAwareActionProcessor {
     try {
       VideoState      videoState      = currentState.getVideoState();
       RemotePeer      activePeer      = currentState.getCallInfoState().requireActivePeer();
-      CallParticipant callParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteParticipant(activePeer.getRecipient()));
+      CallParticipant callParticipant = Objects.requireNonNull(currentState.getCallInfoState().getRemoteCallParticipant(activePeer.getRecipient()));
 
       webRtcInteractor.getCallManager().proceed(activePeer.getCallId(),
                                                 context,
@@ -204,7 +206,12 @@ public class OutgoingCallActionProcessor extends DeviceAwareActionProcessor {
   }
 
   @Override
-  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @NonNull RemotePeer remotePeer) {
+  protected  @NonNull WebRtcServiceState handleSetupFailure(@NonNull WebRtcServiceState currentState, @NonNull CallId callId) {
+    return activeCallDelegate.handleSetupFailure(currentState, callId);
+  }
+
+  @Override
+  protected @NonNull WebRtcServiceState handleCallConcluded(@NonNull WebRtcServiceState currentState, @Nullable RemotePeer remotePeer) {
     return activeCallDelegate.handleCallConcluded(currentState, remotePeer);
   }
 

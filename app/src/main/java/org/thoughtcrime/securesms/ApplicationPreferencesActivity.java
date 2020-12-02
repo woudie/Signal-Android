@@ -18,7 +18,6 @@
 package org.thoughtcrime.securesms;
 
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.PorterDuff;
@@ -27,13 +26,14 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.Preference;
 
 import org.thoughtcrime.securesms.help.HelpFragment;
 import org.thoughtcrime.securesms.keyvalue.SignalStore;
+import org.thoughtcrime.securesms.lock.v2.CreateKbsPinActivity;
 import org.thoughtcrime.securesms.preferences.AdvancedPreferenceFragment;
 import org.thoughtcrime.securesms.preferences.AppProtectionPreferenceFragment;
 import org.thoughtcrime.securesms.preferences.AppearancePreferenceFragment;
@@ -54,6 +54,9 @@ import org.thoughtcrime.securesms.util.DynamicTheme;
 import org.thoughtcrime.securesms.util.FeatureFlags;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.ThemeUtil;
+import org.thoughtcrime.securesms.PassphraseRequiredActivity;
+import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.lock.v2.CreateKbsPinActivity;
 
 /**
  * The Activity for application preference display and management.
@@ -83,8 +86,12 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
   private static final String PREFERENCE_CATEGORY_ADVANCED       = "preference_category_advanced";
   private static final String PREFERENCE_CATEGORY_DONATE         = "preference_category_donate";
 
+  private static final String WAS_CONFIGURATION_UPDATED          = "was_configuration_updated";
+
   private final DynamicTheme    dynamicTheme    = new DynamicTheme();
   private final DynamicLanguage dynamicLanguage = new DynamicLanguage();
+
+  private boolean wasConfigurationUpdated = false;
 
   @Override
   protected void onPreCreate() {
@@ -103,7 +110,15 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
       initFragment(android.R.id.content, new BackupsPreferenceFragment());
     } else if (icicle == null) {
       initFragment(android.R.id.content, new ApplicationPreferenceFragment());
+    } else {
+      wasConfigurationUpdated = icicle.getBoolean(WAS_CONFIGURATION_UPDATED);
     }
+  }
+
+  @Override
+  protected void onSaveInstanceState(@NonNull Bundle outState) {
+    outState.putBoolean(WAS_CONFIGURATION_UPDATED, wasConfigurationUpdated);
+    super.onSaveInstanceState(outState);
   }
 
   @Override
@@ -127,20 +142,28 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
     if (fragmentManager.getBackStackEntryCount() > 0) {
       fragmentManager.popBackStack();
     } else {
-      // TODO [greyson] Navigation
-      Intent intent = new Intent(this, MainActivity.class);
-      intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-      startActivity(intent);
+      if (wasConfigurationUpdated) {
+        setResult(MainActivity.RESULT_CONFIG_CHANGED);
+      } else {
+        setResult(RESULT_OK);
+      }
       finish();
     }
     return true;
   }
 
   @Override
+  public void onBackPressed() {
+    onSupportNavigateUp();
+  }
+
+  @Override
   public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
     if (key.equals(TextSecurePreferences.THEME_PREF)) {
+      DynamicTheme.setDefaultDayNightMode(this);
       recreate();
     } else if (key.equals(TextSecurePreferences.LANGUAGE_PREF)) {
+      wasConfigurationUpdated = true;
       recreate();
 
       Intent intent = new Intent(this, KeyCachingService.class);
@@ -195,7 +218,7 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
       if (Build.VERSION.SDK_INT >= 21) return;
 
       Preference preference = this.findPreference(PREFERENCE_CATEGORY_SMS_MMS);
-      preference.getIcon().setColorFilter(ThemeUtil.getThemedColor(requireContext(), R.attr.icon_tint), PorterDuff.Mode.SRC_IN);
+      preference.getIcon().setColorFilter(ContextCompat.getColor(requireContext(), R.color.signal_icon_tint_primary), PorterDuff.Mode.SRC_IN);
     }
 
     @Override
@@ -293,6 +316,8 @@ public class ApplicationPreferencesActivity extends PassphraseRequiredActivity
           break;
         case PREFERENCE_CATEGORY_DEVICES:
           Intent intent = new Intent(getActivity(), DeviceActivity.class);
+          //final Intent createPin = CreateKbsPinActivity.getIntentForPinCreate(preference.getContext());
+          //final Intent chained   = PassphraseRequiredActivity.chainIntent(createPin, intent);
           startActivity(intent);
           break;
         case PREFERENCE_CATEGORY_ADVANCED:

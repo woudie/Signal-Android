@@ -17,7 +17,6 @@ import org.thoughtcrime.securesms.BuildConfig;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.database.NoExternalStorageException;
 import org.thoughtcrime.securesms.dependencies.ApplicationDependencies;
-import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.permissions.Permissions;
 
 import java.io.File;
@@ -28,25 +27,32 @@ public class StorageUtil {
 
   private static final String PRODUCTION_PACKAGE_ID = "org.thoughtcrime.securesms";
 
-  public static File getBackupDirectory() throws NoExternalStorageException {
+  public static File getOrCreateBackupDirectory() throws NoExternalStorageException {
     File storage = Environment.getExternalStorageDirectory();
 
     if (!storage.canWrite()) {
       throw new NoExternalStorageException();
     }
 
-    File signal = new File(storage, "Signal");
-    File backups = new File(signal, "Backups");
-
-    //noinspection ConstantConditions
-    if (BuildConfig.APPLICATION_ID.startsWith(PRODUCTION_PACKAGE_ID + ".")) {
-      backups = new File(backups, BuildConfig.APPLICATION_ID.substring(PRODUCTION_PACKAGE_ID.length() + 1));
-    }
+    File backups = getBackupDirectory();
 
     if (!backups.exists()) {
       if (!backups.mkdirs()) {
         throw new NoExternalStorageException("Unable to create backup directory...");
       }
+    }
+
+    return backups;
+  }
+
+  public static File getBackupDirectory() throws NoExternalStorageException {
+    File storage = Environment.getExternalStorageDirectory();
+    File signal  = new File(storage, "Signal");
+    File backups = new File(signal, "Backups");
+
+    //noinspection ConstantConditions
+    if (BuildConfig.APPLICATION_ID.startsWith(PRODUCTION_PACKAGE_ID + ".")) {
+      backups = new File(backups, BuildConfig.APPLICATION_ID.substring(PRODUCTION_PACKAGE_ID.length() + 1));
     }
 
     return backups;
@@ -116,27 +122,39 @@ public class StorageUtil {
   }
 
   public static @NonNull Uri getVideoUri() {
-    return MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-  }
-
-  public static @NonNull Uri getAudioUri() {
-    return MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-  }
-
-  public static @NonNull Uri getImageUri() {
-    return MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-  }
-
-  public static @NonNull Uri getDownloadUri() {
-    if (Build.VERSION.SDK_INT > 28) {
-      return MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+    if (Build.VERSION.SDK_INT < 21) {
+      return getLegacyUri(Environment.DIRECTORY_MOVIES);
     } else {
-      return getLegacyDownloadUri();
+      return MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
     }
   }
 
-  public static @NonNull Uri getLegacyDownloadUri() {
-    return Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS));
+  public static @NonNull Uri getAudioUri() {
+    if (Build.VERSION.SDK_INT < 21) {
+      return getLegacyUri(Environment.DIRECTORY_MUSIC);
+    } else {
+      return MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+    }
+  }
+
+  public static @NonNull Uri getImageUri() {
+    if (Build.VERSION.SDK_INT < 21) {
+      return getLegacyUri(Environment.DIRECTORY_PICTURES);
+    } else {
+      return MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+    }
+  }
+
+  public static @NonNull Uri getDownloadUri() {
+    if (Build.VERSION.SDK_INT < 29) {
+      return getLegacyUri(Environment.DIRECTORY_DOWNLOADS);
+    } else {
+      return MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+    }
+  }
+
+  public static @NonNull Uri getLegacyUri(@NonNull String directory) {
+    return Uri.fromFile(Environment.getExternalStoragePublicDirectory(directory));
   }
 
   public static @Nullable String getCleanFileName(@Nullable String fileName) {
